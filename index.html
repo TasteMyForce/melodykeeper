@@ -146,9 +146,9 @@
             </div>
         </div>
 
-        <!-- Firebase SDK (legacy versions) -->
-        <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-legacy.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-legacy.js"></script>
+        <!-- Локальные скрипты Firebase -->
+        <script src="./firebase/firebase-app.js"></script>
+        <script src="./firebase/firebase-database.js"></script>
         <script>
             // Инициализация Firebase
             function initializeFirebase() {
@@ -174,7 +174,7 @@
                     return database;
                 } catch (error) {
                     console.error('Firebase initialization error:', error.message);
-                    alert('Ошибка инициализации Firebase: ' + error.message + '. Проверьте подключение или конфигурацию.');
+                    alert('Ошибка инициализации Firebase: ' + error.message + '. Проверьте подключение или консоль для деталей.');
                     return null;
                 }
             }
