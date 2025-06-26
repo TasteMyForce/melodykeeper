@@ -150,223 +150,171 @@
         </div>
 
         <script>
-            // Ваша конфигурация Firebase (замените на данные из Project Settings)
-            // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-			const firebaseConfig = {
-			  apiKey: "AIzaSyAxTAd6dLCJuDAIJdqezuw-rq_X7Z9gyhg",
-			  authDomain: "melodykeeper-a4cfe.firebaseapp.com",
-			  databaseURL: "https://melodykeeper-a4cfe-default-rtdb.europe-west1.firebasedatabase.app",
-			  projectId: "melodykeeper-a4cfe",
-			  storageBucket: "melodykeeper-a4cfe.firebasestorage.app",
-			  messagingSenderId: "83270701175",
-			  appId: "1:83270701175:web:3f502a2d141ce742ccb672",
-			  measurementId: "G-MCC4LJLST5"
-			};
+    // Функция для инициализации Firebase после загрузки всех скриптов
+    function initializeFirebase() {
+        const firebaseConfig = {
+            apiKey: "AIzaSyAxTAd6dLCJuDAIJdqezuw-rq_X7Z9gyhg",
+            authDomain: "melodykeeper-a4cfe.firebaseapp.com",
+            databaseURL: "https://melodykeeper-a4cfe-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "melodykeeper-a4cfe",
+            storageBucket: "melodykeeper-a4cfe.firebasestorage.app",
+            messagingSenderId: "83270701175",
+            appId: "1:83270701175:web:3f502a2d141ce742ccb672",
+            measurementId: "G-MCC4LJLST5"
+        };
 
-            let database; // Объявляем переменную глобально
-
-            // Инициализация Firebase
-            try {
-                firebase.initializeApp(firebaseConfig);
-                console.log('Firebase initialized successfully');
-                database = firebase.database(); // Присваиваем после успешной инициализации
-            } catch (error) {
-                console.error('Firebase initialization error:', error);
-                alert('Ошибка инициализации Firebase. Проверьте конфигурацию.');
+        let database;
+        try {
+            if (typeof firebase === 'undefined') {
+                throw new Error('Firebase library is not loaded');
             }
+            firebase.initializeApp(firebaseConfig);
+            console.log('Firebase initialized successfully');
+            database = firebase.database();
+            return database;
+        } catch (error) {
+            console.error('Firebase initialization error:', error.message, error.code);
+            alert('Ошибка инициализации Firebase: ' + error.message + '. Проверьте подключение или конфигурацию.');
+            return null;
+        }
+    }
 
-            // Загрузка групп при загрузке страницы
-            function loadBands() {
-                if (!database) {
-                    console.error('Database not initialized');
-                    alert('База данных не инициализирована. Проверьте Firebase.');
-                    return;
-                }
-                const bandsRef = database.ref('bands');
-                bandsRef.on('value', (snapshot) => {
-                    const bands = snapshot.val() || {};
-                    const contentElements = {
-                        'sss': document.getElementById('sss-content'),
-                        's': document.getElementById('s-content'),
-                        'a': document.getElementById('a-content'),
-                        'b': document.getElementById('b-content'),
-                        'c': document.getElementById('c-content')
-                    };
+    // Загрузка групп при загрузке страницы
+    function loadBands() {
+        const db = initializeFirebase();
+        if (!db) return;
 
-                    // Очистка текущих данных
-                    Object.values(contentElements).forEach(el => el.innerHTML = '');
+        const bandsRef = db.ref('bands');
+        bandsRef.on('value', (snapshot) => {
+            const bands = snapshot.val() || {};
+            const contentElements = {
+                'sss': document.getElementById('sss-content'),
+                's': document.getElementById('s-content'),
+                'a': document.getElementById('a-content'),
+                'b': document.getElementById('b-content'),
+                'c': document.getElementById('c-content')
+            };
 
-                    for (const id in bands) {
-                        const band = bands[id];
-                        const overall = ((band.complexity + band.atmosphere + band.quality + band.vocal + band.energy) / 5).toFixed(1);
-                        let tier;
-                        if (overall > 9) tier = 'sss';
-                        else if (overall > 8) tier = 's';
-                        else if (overall > 7) tier = 'a';
-                        else if (overall > 6) tier = 'b';
-                        else tier = 'c';
+            Object.values(contentElements).forEach(el => el.innerHTML = '');
 
-                        const bandDiv = document.createElement('div');
-                        bandDiv.className = 'bg-gray-700 p-4 rounded';
-                        bandDiv.innerHTML = `
-                            <h3 class="text-xl font-semibold mb-2">${band.name}</h3>
-                            <div class="mb-4 p-2 bg-indigo-900 border-2 border-indigo-700 rounded-lg text-center">
-                                <span class="block text-lg font-semibold">Общая оценка: ${overall}/10</span>
-                            </div>
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="border-b border-gray-600">
-                                        <th class="py-2 px-4"></th>
-                                        <th class="py-2 px-4">Сложность</th>
-                                        <th class="py-2 px-4">Атмосферность</th>
-                                        <th class="py-2 px-4">Качество</th>
-                                        <th class="py-2 px-4">Вокал</th>
-                                        <th class="py-2 px-4">Энергетика</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr class="border-b border-gray-600">
-                                        <td class="py-2 px-4"></td>
-                                        <td class="py-2 px-4">${band.complexity || 0}</td>
-                                        <td class="py-2 px-4">${band.atmosphere || 0}</td>
-                                        <td class="py-2 px-4">${band.quality || 0}</td>
-                                        <td class="py-2 px-4">${band.vocal || 0}</td>
-                                        <td class="py-2 px-4">${band.energy || 0}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        `;
-                        contentElements[tier].appendChild(bandDiv);
-                    }
-                }, (error) => {
-                    console.error('Ошибка загрузки данных:', error);
-                    alert('Не удалось загрузить группы. Проверьте подключение к Firebase.');
-                });
+            for (const id in bands) {
+                const band = bands[id];
+                const overall = ((band.complexity + band.atmosphere + band.quality + band.vocal + band.energy) / 5).toFixed(1);
+                let tier = overall > 9 ? 'sss' : overall > 8 ? 's' : overall > 7 ? 'a' : overall > 6 ? 'b' : 'c';
+
+                const bandDiv = document.createElement('div');
+                bandDiv.className = 'bg-gray-700 p-4 rounded';
+                bandDiv.innerHTML = `
+                    <h3 class="text-xl font-semibold mb-2">${band.name}</h3>
+                    <div class="mb-4 p-2 bg-indigo-900 border-2 border-indigo-700 rounded-lg text-center">
+                        <span class="block text-lg font-semibold">Общая оценка: ${overall}/10</span>
+                    </div>
+                    <table class="w-full text-left border-collapse">
+                        <thead><tr class="border-b border-gray-600"><th class="py-2 px-4"></th><th class="py-2 px-4">Сложность</th><th class="py-2 px-4">Атмосферность</th><th class="py-2 px-4">Качество</th><th class="py-2 px-4">Вокал</th><th class="py-2 px-4">Энергетика</th></tr></thead>
+                        <tbody><tr class="border-b border-gray-600"><td class="py-2 px-4"></td><td class="py-2 px-4">${band.complexity || 0}</td><td class="py-2 px-4">${band.atmosphere || 0}</td><td class="py-2 px-4">${band.quality || 0}</td><td class="py-2 px-4">${band.vocal || 0}</td><td class="py-2 px-4">${band.energy || 0}</td></tr></tbody>
+                    </table>
+                `;
+                contentElements[tier].appendChild(bandDiv);
             }
+        }, (error) => {
+            console.error('Ошибка загрузки данных:', error);
+            alert('Не удалось загрузить группы. Проверьте подключение к Firebase.');
+        });
+    }
 
-            // Добавление новой группы
-            function addBand() {
-                console.log('addBand function called'); // Отладка
-                if (!database) {
-                    console.error('Database not initialized');
-                    alert('База данных не инициализирована. Проверьте Firebase.');
-                    return;
-                }
-                const name = document.getElementById('band-name').value.trim();
-                const complexity = parseFloat(document.getElementById('complexity-score').value);
-                const atmosphere = parseFloat(document.getElementById('atmosphere-score').value);
-                const quality = parseFloat(document.getElementById('quality-score').value);
-                const vocal = parseFloat(document.getElementById('vocal-score').value);
-                const energy = parseFloat(document.getElementById('energy-score').value);
+    // Добавление новой группы
+    function addBand() {
+        console.log('addBand function called');
+        const db = initializeFirebase();
+        if (!db) return;
 
-                // Валидация
-                if (!name) {
-                    alert('Введите название группы');
-                    return;
-                }
-                if (isNaN(complexity) || complexity < 0 || complexity > 10) {
-                    alert('Сложность композиции должна быть от 0 до 10');
-                    return;
-                }
-                if (isNaN(atmosphere) || atmosphere < 0 || atmosphere > 10) {
-                    alert('Атмосферность должна быть от 0 до 10');
-                    return;
-                }
-                if (isNaN(quality) || quality < 0 || quality > 10) {
-                    alert('Качество должно быть от 0 до 10');
-                    return;
-                }
-                if (isNaN(vocal) || vocal < 0 || vocal > 10) {
-                    alert('Вокал должен быть от 0 до 10');
-                    return;
-                }
-                if (isNaN(energy) || energy < 0 || energy > 10) {
-                    alert('Энергетика должна быть от 0 до 10');
-                    return;
-                }
+        const name = document.getElementById('band-name').value.trim();
+        const complexity = parseFloat(document.getElementById('complexity-score').value);
+        const atmosphere = parseFloat(document.getElementById('atmosphere-score').value);
+        const quality = parseFloat(document.getElementById('quality-score').value);
+        const vocal = parseFloat(document.getElementById('vocal-score').value);
+        const energy = parseFloat(document.getElementById('energy-score').value);
 
-                const overall = ((complexity + atmosphere + quality + vocal + energy) / 5).toFixed(1);
-                const tier = overall > 9 ? 'sss' : overall > 8 ? 's' : overall > 7 ? 'a' : overall > 6 ? 'b' : 'c';
+        if (!name) {
+            alert('Введите название группы');
+            return;
+        }
+        if (isNaN(complexity) || complexity < 0 || complexity > 10) {
+            alert('Сложность композиции должна быть от 0 до 10');
+            return;
+        }
+        if (isNaN(atmosphere) || atmosphere < 0 || atmosphere > 10) {
+            alert('Атмосферность должна быть от 0 до 10');
+            return;
+        }
+        if (isNaN(quality) || quality < 0 || quality > 10) {
+            alert('Качество должно быть от 0 до 10');
+            return;
+        }
+        if (isNaN(vocal) || vocal < 0 || vocal > 10) {
+            alert('Вокал должен быть от 0 до 10');
+            return;
+        }
+        if (isNaN(energy) || energy < 0 || energy > 10) {
+            alert('Энергетика должна быть от 0 до 10');
+            return;
+        }
 
-                const newBand = {
-                    name,
-                    complexity,
-                    atmosphere,
-                    quality,
-                    vocal,
-                    energy
-                };
+        const overall = ((complexity + atmosphere + quality + vocal + energy) / 5).toFixed(1);
+        const tier = overall > 9 ? 'sss' : overall > 8 ? 's' : overall > 7 ? 'a' : overall > 6 ? 'b' : 'c';
 
-                const bandsRef = database.ref('bands');
-                bandsRef.push(newBand)
-                    .then(() => {
-                        console.log('Band added successfully'); // Отладка
-                        const bandDiv = document.createElement('div');
-                        bandDiv.className = 'bg-gray-700 p-4 rounded';
-                        bandDiv.innerHTML = `
-                            <h3 class="text-xl font-semibold mb-2">${name}</h3>
-                            <div class="mb-4 p-2 bg-indigo-900 border-2 border-indigo-700 rounded-lg text-center">
-                                <span class="block text-lg font-semibold">Общая оценка: ${overall}/10</span>
-                            </div>
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="border-b border-gray-600">
-                                        <th class="py-2 px-4"></th>
-                                        <th class="py-2 px-4">Сложность</th>
-                                        <th class="py-2 px-4">Атмосферность</th>
-                                        <th class="py-2 px-4">Качество</th>
-                                        <th class="py-2 px-4">Вокал</th>
-                                        <th class="py-2 px-4">Энергетика</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr class="border-b border-gray-600">
-                                        <td class="py-2 px-4"></td>
-                                        <td class="py-2 px-4">${complexity}</td>
-                                        <td class="py-2 px-4">${atmosphere}</td>
-                                        <td class="py-2 px-4">${quality}</td>
-                                        <td class="py-2 px-4">${vocal}</td>
-                                        <td class="py-2 px-4">${energy}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        `;
-                        document.getElementById(`${tier}-content`).appendChild(bandDiv);
-                        closeModal();
-                    })
-                    .catch((error) => {
-                        console.error('Ошибка добавления группы:', error);
-                        alert('Не удалось добавить группу. Проверьте подключение к Firebase.');
-                    });
-            }
+        const newBand = { name, complexity, atmosphere, quality, vocal, energy };
+        db.ref('bands').push(newBand)
+            .then(() => {
+                console.log('Band added successfully');
+                const bandDiv = document.createElement('div');
+                bandDiv.className = 'bg-gray-700 p-4 rounded';
+                bandDiv.innerHTML = `
+                    <h3 class="text-xl font-semibold mb-2">${name}</h3>
+                    <div class="mb-4 p-2 bg-indigo-900 border-2 border-indigo-700 rounded-lg text-center">
+                        <span class="block text-lg font-semibold">Общая оценка: ${overall}/10</span>
+                    </div>
+                    <table class="w-full text-left border-collapse">
+                        <thead><tr class="border-b border-gray-600"><th class="py-2 px-4"></th><th class="py-2 px-4">Сложность</th><th class="py-2 px-4">Атмосферность</th><th class="py-2 px-4">Качество</th><th class="py-2 px-4">Вокал</th><th class="py-2 px-4">Энергетика</th></tr></thead>
+                        <tbody><tr class="border-b border-gray-600"><td class="py-2 px-4"></td><td class="py-2 px-4">${complexity}</td><td class="py-2 px-4">${atmosphere}</td><td class="py-2 px-4">${quality}</td><td class="py-2 px-4">${vocal}</td><td class="py-2 px-4">${energy}</td></tr></tbody>
+                    </table>
+                `;
+                document.getElementById(`${tier}-content`).appendChild(bandDiv);
+                closeModal();
+            })
+            .catch((error) => {
+                console.error('Ошибка добавления группы:', error);
+                alert('Не удалось добавить группу: ' + error.message);
+            });
+    }
 
-            function toggleTier(tier) {
-                const content = document.getElementById(`${tier}-content`);
-                const arrow = document.getElementById(`${tier}-arrow`);
-                content.classList.toggle('hidden');
-                arrow.textContent = content.classList.contains('hidden') ? '▼' : '▲';
-            }
+    function toggleTier(tier) {
+        const content = document.getElementById(`${tier}-content`);
+        const arrow = document.getElementById(`${tier}-arrow`);
+        content.classList.toggle('hidden');
+        arrow.textContent = content.classList.contains('hidden') ? '▼' : '▲';
+    }
 
-            function openModal() {
-                document.getElementById('modal').classList.remove('hidden');
-            }
+    function openModal() {
+        document.getElementById('modal').classList.remove('hidden');
+    }
 
-            function closeModal() {
-                document.getElementById('modal').classList.add('hidden');
-                clearForm();
-            }
+    function closeModal() {
+        document.getElementById('modal').classList.add('hidden');
+        clearForm();
+    }
 
-            function clearForm() {
-                document.getElementById('band-name').value = '';
-                document.getElementById('complexity-score').value = '';
-                document.getElementById('atmosphere-score').value = '';
-                document.getElementById('quality-score').value = '';
-                document.getElementById('vocal-score').value = '';
-                document.getElementById('energy-score').value = '';
-            }
+    function clearForm() {
+        document.getElementById('band-name').value = '';
+        document.getElementById('complexity-score').value = '';
+        document.getElementById('atmosphere-score').value = '';
+        document.getElementById('quality-score').value = '';
+        document.getElementById('vocal-score').value = '';
+        document.getElementById('energy-score').value = '';
+    }
 
-            // Загрузка данных при старте
-            window.onload = loadBands;
-        </script>
+    // Вызываем загрузку данных после полной загрузки страницы
+    window.onload = loadBands;
+</script>
     </body>
 </html>
