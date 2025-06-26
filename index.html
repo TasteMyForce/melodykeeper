@@ -161,12 +161,25 @@
                 appId: "your-app-id"
             };
 
+            let database; // Объявляем переменную глобально
+
             // Инициализация Firebase
-            firebase.initializeApp(firebaseConfig);
-            const database = firebase.database();
+            try {
+                firebase.initializeApp(firebaseConfig);
+                console.log('Firebase initialized successfully');
+                database = firebase.database(); // Присваиваем после успешной инициализации
+            } catch (error) {
+                console.error('Firebase initialization error:', error);
+                alert('Ошибка инициализации Firebase. Проверьте конфигурацию.');
+            }
 
             // Загрузка групп при загрузке страницы
             function loadBands() {
+                if (!database) {
+                    console.error('Database not initialized');
+                    alert('База данных не инициализирована. Проверьте Firebase.');
+                    return;
+                }
                 const bandsRef = database.ref('bands');
                 bandsRef.on('value', (snapshot) => {
                     const bands = snapshot.val() || {};
@@ -231,6 +244,12 @@
 
             // Добавление новой группы
             function addBand() {
+                console.log('addBand function called'); // Отладка
+                if (!database) {
+                    console.error('Database not initialized');
+                    alert('База данных не инициализирована. Проверьте Firebase.');
+                    return;
+                }
                 const name = document.getElementById('band-name').value.trim();
                 const complexity = parseFloat(document.getElementById('complexity-score').value);
                 const atmosphere = parseFloat(document.getElementById('atmosphere-score').value);
@@ -279,6 +298,7 @@
                 const bandsRef = database.ref('bands');
                 bandsRef.push(newBand)
                     .then(() => {
+                        console.log('Band added successfully'); // Отладка
                         const bandDiv = document.createElement('div');
                         bandDiv.className = 'bg-gray-700 p-4 rounded';
                         bandDiv.innerHTML = `
