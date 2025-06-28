@@ -1,49 +1,10 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Тир-лист музыкальных групп</title>
-    <link href="./dist/styles.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-900 text-white font-sans">
     <div class="container mx-auto p-6">
@@ -146,46 +107,32 @@
             </div>
         </div>
 
-        <!-- Локальные скрипты Firebase -->
-        <script src="./firebase/firebase-app.js"></script>
-        <script src="./firebase/firebase-database.js"></script>
-        <script>
-            // Инициализация Firebase
-            function initializeFirebase() {
-                const firebaseConfig = {
-                    apiKey: "AIzaSyAxTAd6dLCJuDAIJdqezuw-rq_X7Z9gyhg",
-                    authDomain: "melodykeeper-a4cfe.firebaseapp.com",
-                    databaseURL: "https://melodykeeper-a4cfe-default-rtdb.europe-west1.firebasedatabase.app",
-                    projectId: "melodykeeper-a4cfe",
-                    storageBucket: "melodykeeper-a4cfe.firebasestorage.app",
-                    messagingSenderId: "83270701175",
-                    appId: "1:83270701175:web:3f502a2d141ce742ccb672",
-                    measurementId: "G-MCC4LJLST5"
-                };
+        <!-- Правильное подключение Firebase v9 -->
+        <script type="module">
+            // Import the functions you need from the SDKs you need
+            import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+            import { getDatabase, ref, push, onValue } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
 
-                let database;
-                try {
-                    if (typeof firebase === 'undefined') {
-                        throw new Error('Firebase library is not loaded');
-                    }
-                    firebase.initializeApp(firebaseConfig);
-                    console.log('Firebase initialized successfully');
-                    database = firebase.database();
-                    return database;
-                } catch (error) {
-                    console.error('Firebase initialization error:', error.message);
-                    alert('Ошибка инициализации Firebase: ' + error.message + '. Проверьте подключение или консоль для деталей.');
-                    return null;
-                }
-            }
+            // Your web app's Firebase configuration
+            const firebaseConfig = {
+                apiKey: "AIzaSyAxTAd6dLCJuDAIJdqezuw-rq_X7Z9gyhg",
+                authDomain: "melodykeeper-a4cfe.firebaseapp.com",
+                databaseURL: "https://melodykeeper-a4cfe-default-rtdb.europe-west1.firebasedatabase.app",
+                projectId: "melodykeeper-a4cfe",
+                storageBucket: "melodykeeper-a4cfe.firebasestorage.app",
+                messagingSenderId: "83270701175",
+                appId: "1:83270701175:web:3f502a2d141ce742ccb672",
+                measurementId: "G-MCC4LJLST5"
+            };
+
+            // Initialize Firebase
+            const app = initializeApp(firebaseConfig);
+            const database = getDatabase(app);
 
             // Загрузка групп при загрузке страницы
             function loadBands() {
-                const db = initializeFirebase();
-                if (!db) return;
-
-                const bandsRef = db.ref('bands');
-                bandsRef.on('value', (snapshot) => {
+                const bandsRef = ref(database, 'bands');
+                onValue(bandsRef, (snapshot) => {
                     const bands = snapshot.val() || {};
                     const contentElements = {
                         'sss': document.getElementById('sss-content'),
@@ -223,10 +170,8 @@
             }
 
             // Добавление новой группы
-            function addBand() {
+            window.addBand = function() {
                 console.log('addBand function called');
-                const db = initializeFirebase();
-                if (!db) return;
 
                 const name = document.getElementById('band-name').value.trim();
                 const complexity = parseFloat(document.getElementById('complexity-score').value);
@@ -260,26 +205,12 @@
                     return;
                 }
 
-                const overall = ((complexity + atmosphere + quality + vocal + energy) / 5).toFixed(1);
-                const tier = overall > 9 ? 'sss' : overall > 8 ? 's' : overall > 7 ? 'a' : overall > 6 ? 'b' : 'c';
-
                 const newBand = { name, complexity, atmosphere, quality, vocal, energy };
-                db.ref('bands').push(newBand)
+                const bandsRef = ref(database, 'bands');
+                
+                push(bandsRef, newBand)
                     .then(() => {
                         console.log('Band added successfully');
-                        const bandDiv = document.createElement('div');
-                        bandDiv.className = 'bg-gray-700 p-4 rounded';
-                        bandDiv.innerHTML = `
-                            <h3 class="text-xl font-semibold mb-2">${name}</h3>
-                            <div class="mb-4 p-2 bg-indigo-900 border-2 border-indigo-700 rounded-lg text-center">
-                                <span class="block text-lg font-semibold">Общая оценка: ${overall}/10</span>
-                            </div>
-                            <table class="w-full text-left border-collapse">
-                                <thead><tr class="border-b border-gray-600"><th class="py-2 px-4"></th><th class="py-2 px-4">Сложность</th><th class="py-2 px-4">Атмосферность</th><th class="py-2 px-4">Качество</th><th class="py-2 px-4">Вокал</th><th class="py-2 px-4">Энергетика</th></tr></thead>
-                                <tbody><tr class="border-b border-gray-600"><td class="py-2 px-4"></td><td class="py-2 px-4">${complexity}</td><td class="py-2 px-4">${atmosphere}</td><td class="py-2 px-4">${quality}</td><td class="py-2 px-4">${vocal}</td><td class="py-2 px-4">${energy}</td></tr></tbody>
-                            </table>
-                        `;
-                        document.getElementById(`${tier}-content`).appendChild(bandDiv);
                         closeModal();
                     })
                     .catch((error) => {
@@ -288,6 +219,11 @@
                     });
             }
 
+            // Вызываем загрузку данных после полной загрузки страницы
+            window.addEventListener('load', loadBands);
+        </script>
+
+        <script>
             function toggleTier(tier) {
                 const content = document.getElementById(`${tier}-content`);
                 const arrow = document.getElementById(`${tier}-arrow`);
@@ -312,9 +248,6 @@
                 document.getElementById('vocal-score').value = '';
                 document.getElementById('energy-score').value = '';
             }
-
-            // Вызываем загрузку данных после полной загрузки страницы
-            window.onload = loadBands;
         </script>
     </body>
 </html>
